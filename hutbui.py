@@ -1,91 +1,47 @@
-import random
-import time
+import random, time
 
-def interpret_input(percept):
-    location, status = percept
-    return {'pos': location, 'status': status}
-
-def simple_reflex_agent(percept, rows, cols):
-    state = interpret_input(percept)
-    if state['status'] == 'DIRTY':
-        return 'SUCK'
-    
-    r, c = state['pos']
+def vacuum_agent(sensor, rows, cols):
+    position, status = sensor
+    if status == 'DIRTY': return 'SUCK'
+    r, c = position
     if c % 2 == 0:
-        if r < rows - 1:
-            return 'MOVE_DOWN'
-        elif c < cols - 1:
-            return 'MOVE_RIGHT'
-    else:
-        if r > 0:
-            return 'MOVE_UP'
-        elif c < cols - 1:
-            return 'MOVE_RIGHT'
-            
-    return 'DONE'
+        return 'MOVE_DOWN' if r < rows - 1 else ('MOVE_RIGHT' if c < cols - 1 else 'DONE')
+    return 'MOVE_UP' if r > 0 else ('MOVE_RIGHT' if c < cols - 1 else 'DONE')
 
-class VacuumEnvironment:
-    def __init__(self, rows, cols, grid):
-        self.rows = rows
-        self.cols = cols
-        self.grid = grid
-        self.robot_pos = [0, 0]
+class Environment:
+    def __init__(self, rows, cols):
+        self.rows, self.cols = rows, cols
+        self.grid = [[random.choice([0, 1]) for _ in range(cols)] for _ in range(rows)]
+        self.pos = [0, 0]
 
-    def get_percept(self):
-        r, c = self.robot_pos
-        status = 'DIRTY' if self.grid[r][c] == 1 else 'CLEAN'
-        return (list(self.robot_pos), status)
+    def get_sensor(self):
+        r, c = self.pos
+        return (list(self.pos), 'DIRTY' if self.grid[r][c] == 1 else 'CLEAN')
 
-    def execute_action(self, action):
-        r, c = self.robot_pos
-        if action == 'SUCK':
-            self.grid[r][c] = 0
-            print(f"Action: SUCK at [{r}, {c}]")
-        elif action == 'MOVE_DOWN':
-            self.robot_pos[0] += 1
-            print(f"Action: MOVE_DOWN to {self.robot_pos}")
-        elif action == 'MOVE_UP':
-            self.robot_pos[0] -= 1
-            print(f"Action: MOVE_UP to {self.robot_pos}")
-        elif action == 'MOVE_RIGHT':
-            self.robot_pos[1] += 1
-            print(f"Action: MOVE_RIGHT to {self.robot_pos}")
-        elif action == 'DONE':
-            print("Action: DONE")
-            return False
+    def do_action(self, action):
+        r, c = self.pos
+        if action == 'SUCK': self.grid[r][c] = 0
+        elif action == 'MOVE_DOWN': self.pos[0] += 1
+        elif action == 'MOVE_UP': self.pos[0] -= 1
+        elif action == 'MOVE_RIGHT': self.pos[1] += 1
+        else: return False
+        print(f"Action: {action} at {self.pos}")
         return True
 
     def display(self):
         for r in range(self.rows):
-            row_str = "  "
-            for c in range(self.cols):
-                val = self.grid[r][c]
-                if [r, c] == self.robot_pos:
-                    row_str += f"R({val}) "
-                else:
-                    row_str += f"{val}    "
-            print(row_str)
+            print("  " + "    ".join(f"R({self.grid[r][c]})" if [r, c] == self.pos else str(self.grid[r][c]) for c in range(self.cols)))
 
 if __name__ == "__main__":
-    rows = int(input("Rows: "))
-    cols = int(input("Cols: "))
-    
-    grid = [[random.choice([0, 1]) for _ in range(cols)] for _ in range(rows)]
-        
-    env = VacuumEnvironment(rows, cols, grid)
+    rs, cs = int(input("Rows: ")), int(input("Cols: "))
+    env = Environment(rs, cs)
     print("\nInitial Grid:")
     env.display()
-    
     step = 1
     while True:
         time.sleep(1)
         print(f"\nStep {step}")
-        percept = env.get_percept()
-        action = simple_reflex_agent(percept, rows, cols)
-        
-        success = env.execute_action(action)
+        action = vacuum_agent(env.get_sensor(), rs, cs)
+        if action == 'DONE' or not env.do_action(action): break
         env.display()
-        
-        if action == 'DONE' or not success:
-            break
         step += 1
